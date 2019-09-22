@@ -37,26 +37,33 @@ def signal_handler(nsignal,frame):
 def procesa_paquete(us,header,data):
 	global num_paquete, pdumper, num_bytes, debug
 	databytes = []
-	logging.info('Nuevo paquete de {} bytes capturado a las {}.{}'.format(header.len,header.ts.tv_sec,header.ts.tv_usec))
+	modification = pcap_pkthdr()
+	time = header.ts.tv_sec
+	fract = ((header.ts.tv_usec)/1000000)*60
+	logging.info('Nuevo paquete de {} bytes capturado a las {}'.format(header.len,datetime.datetime.fromtimestamp(time+fract)))
 	num_paquete += 1
-	
+
+	modification.len = header.len
+	modification.caplen = header.len
+	modification.ts.tv_sec = header.ts.tv_sec + 1800
+	modification.ts.tv_usec = header.ts.tv_sec
+
 	#Impresion de los N primeros bytes
 	#Cambiamos el formato de impresion a hexadecimal con 2 digitos por byte
 	for value in data[:num_bytes]:
 		databytes.append("{:02x}".format(value))
-	print("---------------------------")
 
-	
+	print("---------------------------")
 	print('Primeros ' + str(num_bytes) + ' bytes: ' + str(databytes))
 	print("---------------------------\n")
 
 	#Escribir el tráfico al fichero de captura con el offset temporal
 	if pdumper:
-		pcap_dump(pdumper,header,data)
+		pcap_dump(pdumper,modification,data)
 	
 
-	
-
+	# 1569175313.1569173513
+	# 1569173513.196767
     
 	
 if __name__ == "__main__":
@@ -87,7 +94,6 @@ if __name__ == "__main__":
 	handle = None
 	pdumper = None
 	ret = -1
-	h = pcap_pkthdr()
 	pkt_data = bytearray()
 
 
