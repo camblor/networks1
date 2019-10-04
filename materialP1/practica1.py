@@ -40,14 +40,13 @@ def procesa_paquete(us,header,data):
 	modification = pcap_pkthdr()
 	time = header.ts.tv_sec
 	fract = ((header.ts.tv_usec)/1000000)*60
-	print(time)
-	print(fract)
+	
 	logging.info('Nuevo paquete de {} bytes capturado a las {}'.format(header.len,datetime.datetime.fromtimestamp(time+fract)))
 	num_paquete += 1
 
-	
+
 	modification.len = header.len
-	modification.caplen = header.len
+	modification.caplen = header.caplen
 	modification.ts.tv_sec = header.ts.tv_sec + (30*60)
 	modification.ts.tv_usec = header.ts.tv_usec
 
