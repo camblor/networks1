@@ -20,7 +20,7 @@ import logging
 import binascii
 
 ETH_FRAME_MAX = 1514
-PAQUETES_TOTAL = 5
+PAQUETES_TOTAL = 20
 PROMISC = 1
 NO_PROMISC = 0
 TO_MS = 10
@@ -40,14 +40,14 @@ def procesa_paquete(us,header,data):
 	modification = pcap_pkthdr()
 	time = header.ts.tv_sec
 	fract = ((header.ts.tv_usec)/1000000)*60
-	
+
 	logging.info('Nuevo paquete de {} bytes capturado a las {}'.format(header.len,datetime.datetime.fromtimestamp(time+fract)))
 	num_paquete += 1
 
 
 	modification.len = header.len
 	modification.caplen = header.caplen
-	modification.ts.tv_sec = header.ts.tv_sec + (30*60)
+	modification.ts.tv_sec = header.ts.tv_sec + TIME_OFFSET
 	modification.ts.tv_usec = header.ts.tv_usec
 
 	#Impresion de los N primeros bytes
@@ -62,10 +62,6 @@ def procesa_paquete(us,header,data):
 	#Escribir el tráfico al fichero de captura con el offset temporal
 	if pdumper:
 		pcap_dump(pdumper,modification,data)
-	
-
-	# 1569175313.1569173513
-	# 1569173513.196767
     
 	
 if __name__ == "__main__":
@@ -113,8 +109,6 @@ if __name__ == "__main__":
 		traza_name = 'captura.' + str(args.interface) + '.' + str(time.time()) + '.pcap'
 		pdumper = pcap_dump_open(descr2,traza_name)
 		
-		
-	
 
 	'''
 	-SITUACION --file
@@ -169,6 +163,3 @@ if __name__ == "__main__":
 	#Cerrado del dump
 	if pdumper:
 		pcap_dump_close(pdumper)	
-
-	
-
