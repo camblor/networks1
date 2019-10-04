@@ -40,13 +40,16 @@ def procesa_paquete(us,header,data):
 	modification = pcap_pkthdr()
 	time = header.ts.tv_sec
 	fract = ((header.ts.tv_usec)/1000000)*60
+	print(time)
+	print(fract)
 	logging.info('Nuevo paquete de {} bytes capturado a las {}'.format(header.len,datetime.datetime.fromtimestamp(time+fract)))
 	num_paquete += 1
 
+	
 	modification.len = header.len
 	modification.caplen = header.len
-	modification.ts.tv_sec = header.ts.tv_sec + 1800
-	modification.ts.tv_usec = header.ts.tv_sec
+	modification.ts.tv_sec = header.ts.tv_sec + (30*60)
+	modification.ts.tv_usec = header.ts.tv_usec
 
 	#Impresion de los N primeros bytes
 	#Cambiamos el formato de impresion a hexadecimal con 2 digitos por byte
@@ -108,7 +111,7 @@ if __name__ == "__main__":
 		#Apertura de un dumper para volcar el tráfico (si se ha especificado interfaz)
 		descr2 = pcap_open_dead(DLT_EN10MB,1514)
 		date  = datetime.datetime.now()
-		traza_name = 'captura.' + str(args.interface) + '.' + str(date.year) + '_' + str(date.month) + '_' + str(date.day) + '.pcap'
+		traza_name = 'captura.' + str(args.interface) + '.' + str(time.time()) + '.pcap'
 		pdumper = pcap_dump_open(descr2,traza_name)
 		
 		
