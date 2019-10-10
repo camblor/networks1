@@ -20,7 +20,7 @@ import logging
 import binascii
 
 ETH_FRAME_MAX = 1514
-PAQUETES_TOTAL = 90
+PAQUETES_TOTAL = 5
 PROMISC = 1
 NO_PROMISC = 0
 TO_MS = 10
