@@ -20,7 +20,7 @@ import logging
 import binascii
 
 ETH_FRAME_MAX = 1514
-PAQUETES_TOTAL = 20
+PAQUETES_TOTAL = 90
 PROMISC = 1
 NO_PROMISC = 0
 TO_MS = 10
@@ -52,12 +52,20 @@ def procesa_paquete(us,header,data):
 
 	#Impresion de los N primeros bytes
 	#Cambiamos el formato de impresion a hexadecimal con 2 digitos por byte
-	for value in data[:num_bytes]:
-		databytes.append("{:02x}".format(value))
+	if(num_bytes <= header.caplen):
+		for value in data[:num_bytes]:
+			databytes.append("{:02x}".format(value))
 
-	print("---------------------------")
-	print('Primeros ' + str(num_bytes) + ' bytes: ' + str(databytes))
-	print("---------------------------\n")
+		print("---------------------------")
+		print('Primeros ' + str(num_bytes) + ' bytes: ' + str(databytes))
+		print("---------------------------\n")
+	else:
+		for value in data[:header.caplen]:
+			databytes.append("{:02x}".format(value))
+
+		print("---------------------------")
+		print('Número de bytes del paquete: ' + str(header.caplen) + '\n' + ' bytes: ' + str(databytes))
+		print("---------------------------\n")
 
 	#Escribir el tráfico al fichero de captura con el offset temporal
 	if pdumper:
