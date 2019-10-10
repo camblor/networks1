@@ -116,7 +116,7 @@ if __name__ == "__main__":
 		date  = datetime.datetime.now()
 		traza_name = 'captura.' + str(args.interface) + '.' + str(time.time()) + '.pcap'
 		pdumper = pcap_dump_open(descr2,traza_name)
-		
+	
 
 	'''
 	-SITUACION --file
@@ -152,10 +152,10 @@ if __name__ == "__main__":
 	if handle:
 		if debug == True:
 			print("-- Entrando en bucle de captura --\n")
-			ret = pcap_loop(handle,PAQUETES_TOTAL,procesa_paquete,None)
+			ret = pcap_loop(handle,-1,procesa_paquete,None)
 			print("-- Saliendo del bucle de captura --\n")
 		else:
-			ret = pcap_loop(handle,PAQUETES_TOTAL,procesa_paquete,None)
+			ret = pcap_loop(handle,-1,procesa_paquete,None)
 
 		pcap_close(handle)
 
