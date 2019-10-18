@@ -91,6 +91,21 @@ def processARPRequest(data,MAC):
     '''
     logging.debug('Función no implementada')
     #TODO implementar aquí
+
+    # Extraccion
+    macOrigenContenida = data[:5]
+    macDestinoContenida = data[9:15]
+    ipOrigenContenida = data[5:9]
+    ipDestinoContenida = data[15:19]
+
+    if macOrigenContenida != MAC or ipOrigenContenida != ipDestinoContenida:
+        return
+
+    respuestaARP = createARPReply(ipDestinoContenida, macOrigenContenida)
+    sendEthernetFrame(respuestaARP, len(respuestaARP), [0x0101], macDestinoContenida)
+    
+
+
 def processARPReply(data,MAC):
     '''
         Nombre: processARPReply
@@ -117,8 +132,28 @@ def processARPReply(data,MAC):
     global requestedIP,resolvedMAC,awaitingResponse,cache
     logging.debug('Función no implentada')    
     #TODO implementar aquí
-        
 
+    macOrigenContenida = data[:5]
+    macDestinoContenida = data[9:15]
+    ipOrigenContenida = data[5:9]
+    ipDestinoContenida = data[15:19]
+
+    if macOrigenContenida != MAC or ipOrigenContenida != ipDestinoContenida:
+        return
+
+    if ipOrigenContenida != requestedIP:
+        return
+
+    globalLock.acquire
+    resolvedMAC = macOrigenContenida
+    awaitingResponse = False
+    requestedIP = None
+    globalLock.release
+
+    cacheLock.acquire
+    cache[macOrigenContenida] = ipOrigenContenida
+    cacheLock.release
+    
 
 
 def createARPRequest(ip):
@@ -174,6 +209,20 @@ def process_arp_frame(us,header,data,srcMac):
     logging.debug('Función no implementada')
     #TODO implementar aquí
 
+    # Comprobar cabecera correcta
+    if ARPHeader != data[0:5]:
+        return
+    
+    # Extraer OPCode y llamar en funcion de este
+    if bytes([0x0001]) == data[5:7]:
+        processARPRequest(data[7:], srcMac)
+    elif bytes([0x0002]) == data[5:7]:
+        processARPReply(data[7:], srcMac)
+    else:
+        return
+
+
+
 
 
 def initARP(interface):
@@ -188,6 +237,21 @@ def initARP(interface):
     global myIP,myMAC,arpInitialized
     logging.debug('Función no implementada')
     #TODO implementar aquí
+
+    # Registrar process_arp_frame para el ethertype arp (0x0806)
+    registerCallback(process_arp_frame, bytes([0x0806]))
+
+    # Obtener mac e ip asociadas a la interfaz
+    myIP = getIP(interface)
+    myMAC = getHwAddr(interface)
+
+    # TODO Comprobar con ARP gratuita si la ip estaba asignada -> dev error
+    return -1
+    
+
+    # Marcar a True la variable de nivel ARP
+    arpInitialized = True
+
     return 0
 
 def ARPResolution(ip):
@@ -212,4 +276,26 @@ def ARPResolution(ip):
     global requestedIP,awaitingResponse,resolvedMAC
     logging.debug('Función no implementada')
     #TODO implementar aquí
+    
+    # Si esta en cache devolver la info de cache
+    cacheLock.acquire
+    if ip in cache:
+        return cache[ip]
+    cacheLock.release
+    
+    # Si no lo esta:
+    # Construir la peticion ARP llamando a createARPRequest
+    arprequest = createARPRequest(ip)
+
+    # Enviar dicha peticion
+    sendEthernetFrame(arprequest, len(arprequest), [0x0806], broadcastAddr)
+
+    #Comprobar si hay respuesta o no
+    for i in range(3):
+        time.sleep(i)
+        globalLock.acquire
+        if not awaitingResponse:
+            return resolvedMAC
+        globalLock.release
+
     return None
