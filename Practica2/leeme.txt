@@ -1,0 +1,23 @@
+Autor: Alfonso Camblor Garcia
+Grupo: 1301
+Pareja: 10
+
+Comentarios:  
+
+ Se ha anadido en el codigo algun print para comprobar la correcta ejecucion.
+ Se sube tambien el archivo rc1_pcap.py, necesario para el correcto funcionamiento.
+ Aunque no esta indicado en los metodos de verificacion, la utilidad Mininet ha servido de gran ayuda para comprobar la correccion de las funciones.
+
+Criterios de evaluacion: 
+
+ Normativa de entrega cumplida en su totalidad: Realizado.
+ Fichero leeme.txt bien explicado: Realizado.
+ Recibir tramas Ethernet, realizar comprobaciones y llamar correctamente a la funcion de callback de nivel superior: Realizado. Funcion process_Ethernet_frame(us,header,data), dentro de ethernet.py. Comprobacion mediante prints durante el desarrollo.
+ Enviar tramas Ethernet  correctamente: Realizado. Funcion sendEthernetFrame(data,len,etherType,dstMac) en ethernet.py. Comprobacion mediante prints durante el desarrollo.
+ Enviar correctamente peticiones ARP: Realizado. Mediante la implementacion de ARPResolution(ip) y la creacion de frames en createARPRequest(ip) en arp.py. Comprobado mediante Wireshark
+ Procesar correctamente peticiones ARP recibidas: Realizado. Funcion processARPRequest(data,MAC)en arp.py. Comprobacion mediante prints durante el desarrollo.
+ Enviar correctamente respuestas ARP: Realizado. Mediante la implementacion de createARPReply(IP,MAC) que genera una respuesta en arp.py. Comprobado mediante Wireshark
+ Procesar correctamente respuestas ARP: Realizado. Funcion processARPReply(data,MAC) en arp.py. Comprobacion mediante prints durante el desarrollo.
+ Manejo correcto de la cache ARP: Realizado. Descripciones y comentarios en los archivos .py donde se explica la utilizacion de la cache.
+ Uso correcto de Locks: Realizado. Indicado en las descripciones de las funciones a realizar, donde encontramos las variables a proteger y los locks especificos que deben protegerlas.
+ Realiza correctamente el ARP gratuito: Realizado. Funcion de inicializacion del ARP - initARP(interface). Comprobado mediante Wireshark.
