@@ -59,7 +59,7 @@ if __name__ == "__main__":
     prueba = 8/3
     prueba=int(prueba)
     print(prueba)
-    data = b'lorem ipsum dolor sit amet'
+    data = b'Lorem Ipsum etc'
     if args.dataFile:
         with open(args.dataFile,'r') as f:
             #Leemos el contenido del fichero

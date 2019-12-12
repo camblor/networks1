@@ -24,7 +24,7 @@ IP_MIN_HLEN = 20
 IP_MAX_HLEN = 60
 #Valor de TTL por defecto
 DEFAULT_TTL = 64
- 
+
 
 '''
     Nombre: chksum
@@ -35,60 +35,49 @@ DEFAULT_TTL = 64
 '''
 def chksum(msg):
 
-    #Inicializacion del checksum en 0
-    checkS = 0      
-
-    #Calculo
+    s = 0      
     for i in range(0, len(msg), 2):
-        #Caso 1
         if (i+1) < len(msg):
             a = msg[i] 
             b = msg[i+1]
-            checkS = checkS + (a+(b << 8))
-        #Caso 2
+            s = s + (a+(b << 8))
         elif (i+1)==len(msg):
-            checkS += msg[i]
-
-        #Error
+            s += msg[i]
         else:
-            raise 'Error calculando checksum'
+            raise 'Error calculando el checksum'
+    s = s + (s >> 16)
+    s = ~s & 0xffff
+ 
+    return s
 
-    #Formato
-    checkS = checkS + (checkS >> 16)
-    checkS = ~checkS & 0xffff
-    
-    #Devuelve
-    return checkS
 
 '''
     Nombre: getMTU
-    Descripción: Esta función obtiene la MTU para un interfaz dada
+    Descripción: Esta función obteiene la MTU para un interfaz dada
     Argumentos:
         -interface: cadena con el nombre la interfaz sobre la que consultar la MTU
     Retorno: Entero con el valor de la MTU para la interfaz especificada
 '''
 def getMTU(interface):
 
-    #Obtencion MTU
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
     ifr = struct.pack('16sH', interface.encode("utf-8"), 0)
     mtu = struct.unpack('16sH', ioctl(s,SIOCGIFMTU, ifr))[1]
+    
     s.close()
     
-    #Devuelve MTU
     return mtu
-    
+
 
 '''
     Nombre: getNetmask
-    Descripción: Esta función obtiene la máscara de red asignada a una interfaz 
+    Descripción: Esta función obteiene la máscara de red asignada a una interfaz 
     Argumentos:
         -interface: cadena con el nombre la interfaz sobre la que consultar la máscara
     Retorno: Entero de 32 bits con el valor de la máscara de red
-'''
+''' 
 def getNetmask(interface):
 
-    #Obtencion de mascara de red asociada a interfaz
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     ip = fcntl.ioctl(
         s.fileno(),
@@ -96,29 +85,23 @@ def getNetmask(interface):
         struct.pack('256s', (interface[:15].encode('utf-8')))
     )[20:24]
     s.close()
-
-    #Devuelve
     return struct.unpack('!I',ip)[0]
-
-
+ 
 '''
     Nombre: getDefaultGW
-    Descripción: Esta función obtiene el gateway por defecto para una interfaz dada
+    Descripción: Esta función obteiene el gateway por defecto para una interfaz dada
     Argumentos:
         -interface: cadena con el nombre la interfaz sobre la que consultar el gateway
     Retorno: Entero de 32 bits con la IP del gateway
 '''
 def getDefaultGW(interface):
 
-    #Gateway por defecto
     p = subprocess.Popen(['ip r | grep default | awk \'{print $3}\''], stdout=subprocess.PIPE, shell=True)
     dfw = p.stdout.read().decode('utf-8')
-    
-    #Devuelve 
+     
     return struct.unpack('!I',socket.inet_aton(dfw))[0]
  
  
-
 '''
     Nombre: process_IP_datagram
     Descripción: Esta función procesa datagramas IP recibidos.
@@ -149,38 +132,32 @@ def getDefaultGW(interface):
 '''
 def process_IP_datagram(us,header,data,srcMac):
 
-    global protocols
-
-    #Extraccion de cabecera
-    IPOrigen = struct.unpack("!I", data[12:16])[0]     
-    IPDestino = struct.unpack("!I", data[16:20])[0]    
+ 
+    #Extraccion
+    IPOrigen = struct.unpack("!I", data[12:16])[0]
+     
+    IPDestino = struct.unpack("!I", data[16:20])[0]
+    
     IPID = struct.unpack("!H", data[4:6])[0]
     protocolo = struct.unpack("B", data[9:10])[0]
     primerByte = struct.unpack("B", data[0:1])[0]
     
-    #Longitud cabecera
+    #Longitud de cabecera
     IHL = primerByte & 0x0F
     
-    #Flags
-    banderasOffset = struct.unpack("!H", data[6:8])[0]
-    offset = banderasOffset & 0X1FFF
-    DF = (banderasOffset >> 14) & 0x0001
-    MF = (banderasOffset >> 13) & 0x0001
+    #Banderas
+    BanderasOffset = struct.unpack("!H", data[6:8])[0]
+    offset = BanderasOffset & 0X1FFF
+    DF = (BanderasOffset >> 14) & 0x0001
+    MF = (BanderasOffset >> 13) & 0x0001
 
 
-    #Calcular checksum
+    #Checksum
     datagram_header = data[0:IHL*4]
     checksum = chksum(datagram_header)
 
-    #Si checksum != 0 -> Dejamos de procesar
-    if checksum is not 0:
-        return
-
-    #Si offset != 0 -> Dejamos de procesar
-    if offset is not 0:
-        return
     
-    #Loggear
+    #Logging
     logging.debug("Longitud de cabecera : {}".format(IHL*4))
     logging.debug("IPID : {}".format(IPID))
     logging.debug("DF : {}  MF: {}".format(DF, MF))
@@ -188,20 +165,20 @@ def process_IP_datagram(us,header,data,srcMac):
     logging.debug("IP Origen : {}".format(bytes(data[12:16])))
     logging.debug("IP Destino : {}".format(bytes(data[16:20])))
     logging.debug("Protocolo : {}".format(protocolo))
-    #Logueo checksum
-    logging.debug("Checksum: {}".format(checksum))
+    logging.debug("CHECKSUM: {}".format(checksum))
     
+    #Checksum debe ser 0
+    if checksum is not 0:
+        return
     
-    
-    #Comprobacion funcion registrada
+    #Protocols tiene registrada la funcion
     if protocolo in protocols:
-        #Si hay una de nivel superior se la llama con el payload del datagrama IP
         funct = protocols[protocolo]
         funct(us,header, data[IHL*4:], IPOrigen)
-
-    #Retorno
-    return
+    else:
+        return
            
+
 '''
     Nombre: registerIPProtocol
     Descripción: Esta función recibirá el nombre de una función y su valor de protocolo IP asociado y añadirá en la tabla 
@@ -221,11 +198,15 @@ def process_IP_datagram(us,header,data,srcMac):
             La función no retornará nada. Si un datagrama se quiere descartar basta con hacer un return sin valor y dejará de procesarse.
         -protocol: valor del campo protocolo de IP para el cuál se quiere registrar una función de callback.
     Retorno: Ninguno 
-'''
+'''   
 def registerIPProtocol(callback,protocol):
+
     global protocols
+    #Asociacion
     protocols[protocol] = callback
      
+
+
 '''
     Nombre: initIP
     Descripción: Esta función inicializará el nivel IP. Esta función debe realizar, al menos, las siguientes tareas:
@@ -245,20 +226,19 @@ def registerIPProtocol(callback,protocol):
 def initIP(interface,opts=None):
     global myIP, MTU, netmask, defaultGW,ipOpts
 
-    #Inicializacion del nivel ARP
+    
+    #Inicializar ARP
     if initARP(interface) == False:
         return False;
- 
-    #Obtención y almacenaje de variables globales
+    
+    #Obtencion
     myIP = getIP(interface)
     MTU = getMTU(interface)
     netmask = getNetmask(interface)
     defaultGW = getDefaultGW(interface)
-
-    #Almacenaje de opts
     ipOpts = opts
-    
-    #Registro a nivel ethernet
+ 
+    #Registramos a nivel ethernet
     registerCallback(process_IP_datagram, bytes([0x08, 0x00]))
  
     return True
@@ -296,130 +276,130 @@ def initIP(interface,opts=None):
 def sendIPDatagram(dstIP,data,protocol):
     global IPID, ipOpts, myIP, MTU, defaultGW
 
-    #Preparación de la construcción de cabecera
+    #Header e IHL
     header = bytes()
     IHL = 20
-
-    #Opcion en que ipOpts es distinto de None
+  
+    #ipOpts
     if ipOpts is not None:
         IHL += len(ipOpts)
     
-    #Obtención de datos
     IHL //= 4
-    IHL = int(IHL)     
+    IHL = int(IHL)
+     
+
+    #Protocolo
     version = 4
     version = (version | (1<<6)) & 0xF0
     byte1 = int(version +IHL)
     type_service = 0
     totalLen = IHL*4+ len(data)
-
-    #Obtener MAC de la ip destino
     dstMac = ARPResolution(dstIP) 
+ 
 
-    #Si la IP destino no está en mi subred
+    #Caso dstMac none (default GW)
     if dstMac is None:
-        #Obtenemos default gateway
         dstMac = ARPResolution(defaultGW)
 
-     
-    #Preparamos el offset de banderas y el checksum
+    
+    #Inicializacion
     flags_offset = 0 
     checksum = 0
     
-    #construimos cabecera
-    header += struct.pack("B", byte1) + struct.pack("B", 0) 
-    header += struct.pack("!H", totalLen) + struct.pack("!H", IPID) 
-    header += struct.pack("!H", flags_offset) + struct.pack("B", DEFAULT_TTL) 
-    header += struct.pack("B", protocol) + struct.pack("!H", checksum) 
-    header += struct.pack("!I", myIP) + struct.pack("!I", dstIP)
-
-    #Si ipOpts no es none añadimos
+    #Construccion cabecera
+    header += struct.pack("B", byte1) + struct.pack("B", 0) + struct.pack("!H", totalLen) + struct.pack("!H", IPID) + struct.pack("!H", flags_offset) + struct.pack("B", DEFAULT_TTL) + struct.pack("B", protocol) + struct.pack("!H", checksum) + struct.pack("!I", myIP) + struct.pack("!I", dstIP)
     if ipOpts is not None:
         header += ipOpts
     
-    #Calculo del checksum
+    #calculamos el checksum
     checksum = struct.pack("H", chksum(header))
+     
+     #completamos cabecera con checksum e ipOpts (si no es None)
     
-    
-    #FRAGMENTACION
+    #Fragmentacion
     if len(data) > MTU:
-
-        #Maximos bytes a mandar
+        #Numero de bytes maximos y numero de fragmentos
         maximo = MTU-IHL*4
-
-        #Número de fragmentos
         nfragmentos = len(data)/maximo
-        
-        #Variable iterativa
-        i=0
-        # Empieza fragmentación        
+
+        i=0        
         while(i<nfragmentos):
-            # Indice en data en que el fragmento empieza y acaba
+            #Indices del fragmento
             k=maximo*i
-            l=k+maximo
+            l=k+maximo 
 
-            # Sacamos el fragmento
+            #Fragmento y datos restantes
             datos = data[k:l]
-
-            # Cuanto queda de fragmentacion
             restante = len(data) - k
 
-            #CASO Ultimo datagrama
+            #Caso ultimo datagrama a enviar
             if restante <= maximo:
                 flags = 0
+                offset = int(k/8)
+                flags_offset = flags | offset
                 totalLen = restante + IHL*4
 
-            #Todos menos el ultimo datagrama
-            else: 
+            #Caso datagrama no es el ultimo a enviar
+            else:
                 flags = 0
                 flags = flags|(1<<13)
-                totalLen = maximo + IHL*4
+                offset = int(k/8)
+                flags_offset = flags | offset
+                totalLen = maximo + IHL*4 #longitud del datagrama entero
+            
+            checksum = struct.pack("!H", 0)
 
-            #Todos
-            offset = int(k/8)
-            flags_offset = flags | offset
-                
-            #Calculo del checksum (ipOpts None controlado)
-            checksum = struct.pack("H", 0)
+
+            #ipOpts
             if ipOpts is not None:
-                header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + checksum + struct.pack('!I', myIP) + struct.pack('!I', dstIP) + ipOpts 
+                header = struct.pack('B', byte1) + struct.pack("B", 0) 
+                header += struct.pack('!H', totalLen) +  struct.pack('!H', IPID) 
+                header += struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL)
+                header += struct.pack('B', protocol) + checksum + struct.pack('!I', myIP)
+                header += struct.pack('!I', dstIP) + ipOpts 
                 checksum = chksum(header)
-                header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + checksum + struct.pack('!I', myIP) + struct.pack('!I', dstIP) + ipOpts 
+                header = struct.pack('B', byte1) + struct.pack("B", 0) 
+                header += struct.pack('!H', totalLen) +  struct.pack('!H', IPID) 
+                header += struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) 
+                header += struct.pack('B', protocol) + struct.pack("!H", checksum) + struct.pack('!I', myIP) 
+                header += struct.pack('!I', dstIP) + ipOpts
+            #No ipOpts
             else:
                 header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + checksum + struct.pack('!I', myIP) + struct.pack('!I', dstIP)
                 checksum = chksum(header)
-                header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + struct.pack("H", checksum) + struct.pack('!I', myIP) + struct.pack('!I', dstIP)
+                header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + struct.pack("!H", checksum) + struct.pack('!I', myIP) + struct.pack('!I', dstIP)
 
-            #Finaliza preparacion
-            print(header)
+            #Preparacion para envio
             datagrama = header+datos
             length = len(datagrama)
             
-            #Envio de datagrama y comprobacion de error
-            if sendEthernetFrame(datagrama, length, 0x0800, bytes(dstMac)) is -1:
+            #Envio
+            if sendEthernetFrame(datagrama, length, bytes([0x08, 0x00]), bytes(dstMac)) is -1:
                 return False
-
-            #Siguiente fragmento
             i+=1
             
+        #Aumento de contador tras enviar fragmentos
+        IPID+=1
+        return True
 
 
     else:
-        #Control ipOpts
+        #ipOpts
         if ipOpts is not None:
             header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + checksum + struct.pack('!I', myIP) + struct.pack('!I', dstIP) + ipOpts 
         else:
             header = struct.pack('B', byte1) + struct.pack("B", 0) + struct.pack('!H', totalLen) +  struct.pack('!H', IPID) + struct.pack('!H', flags_offset) + struct.pack('B', DEFAULT_TTL) + struct.pack('B', protocol) + checksum + struct.pack('!I', myIP) + struct.pack('!I', dstIP)
-        
-        #Finaliza preparacion
+    
+        #Preparacion para envio
         datagrama = header + data
         length = len(datagrama)
 
-        #Envio de datagrama y comprobacion de error     
-        if sendEthernetFrame(datagrama, length, 0x0800, bytes(dstMac)) is -1:
+
+        #Envio     
+        if sendEthernetFrame(datagrama, length, bytes([0x08, 0x00]), bytes(dstMac)) is -1:
             return False
         
-    #Incremento tras envío
-    IPID += 1
-    return True
+        #Aumento de contador
+        IPID += 1
+        return True
 

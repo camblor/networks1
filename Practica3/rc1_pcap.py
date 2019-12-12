@@ -6,11 +6,11 @@
 
 import ctypes,sys
 from ctypes.util import find_library
-
+ 
 user_callback = None
-
+ 
 DLT_EN10MB = 1
-
+ 
 def mycallback(us,h,data):
     header = pcap_pkthdr ()
     header.len = h[0].len
@@ -18,27 +18,27 @@ def mycallback(us,h,data):
     header.ts = timeval(h[0].tv_sec,h[0].tv_usec)
     if user_callback is not None:
         user_callback (us,header,bytearray(data[:header.caplen]))
-
-
-
+ 
+ 
+ 
 pcap = ctypes.cdll.LoadLibrary("libpcap.so")
-
-
+ 
+ 
 class timeval():
     def __init__(self,tv_sec,tv_usec):
         self.tv_sec = tv_sec
         self.tv_usec = tv_usec
-
+ 
 class pcap_pkthdr():
     def __init__(self):
         self.len=0
         self.caplen=0
         self.ts=timeval(0,0)
-
+ 
 class pcappkthdr(ctypes.Structure):
     _fields_ = [("tv_sec", ctypes.c_long), ("tv_usec", ctypes.c_long), ("caplen", ctypes.c_uint32), ("len", ctypes.c_uint32)]
-
-
+ 
+ 
 def pcap_open_offline(fname,errbuf):
     #pcap_t *pcap_open_offline(const char *fname, char *errbuf);
     poo = pcap.pcap_open_offline
@@ -48,8 +48,8 @@ def pcap_open_offline(fname,errbuf):
     handle = poo(fn,eb)
     errbuf.extend(bytes(format(eb.value).encode('ascii')))
     return handle
-
-
+ 
+ 
 def pcap_open_dead(linktype,snaplen):
     #pcap_t *pcap_open_dead(int linktype, int snaplen)
     pod = pcap.pcap_open_dead
@@ -58,7 +58,7 @@ def pcap_open_dead(linktype,snaplen):
     sn = ctypes.c_int(snaplen)
     handle = pod(lt,sn)
     return handle
-
+ 
 def pcap_dump_open(descr, fname):
     #pcap_dumper_t *pcap_dump_open(pcap_t *p, const char *fname);
     pdo = pcap.pcap_dump_open
@@ -67,7 +67,7 @@ def pcap_dump_open(descr, fname):
     fn =  bytes(str(fname), 'ascii')
     handle = pdo(ds,fn)
     return handle
-
+ 
 def pcap_dump(dumper,header,data):
     # void pcap_dump(u_char *user, struct pcap_pkthdr *h,u_char *sp);
     pd = pcap.pcap_dump
@@ -80,11 +80,11 @@ def pcap_dump(dumper,header,data):
     h = ctypes.byref(haux)
     d = ctypes.c_char_p(bytes(data))
     pd(dp,h,d)
-
-
-
+ 
+ 
+ 
 def pcap_open_live(device,snaplen,promisc,to_ms,errbuf):
-    
+     
     #pcap_t *pcap_open_live(const char *device, int snaplen,int promisc, int to_ms, char *errbuf)
     pol = pcap.pcap_open_live
     pol.restype = ctypes.POINTER(ctypes.c_void_p)
@@ -95,19 +95,19 @@ def pcap_open_live(device,snaplen,promisc,to_ms,errbuf):
     eb = ctypes.create_string_buffer(256)
     handle = pol(dv,sn,pr,tms,eb)
     errbuf.extend(bytes(format(eb.value).encode('ascii')))
-
+ 
     return handle
-
+ 
 def pcap_close(handle):
     #void pcap_close(pcap_t *p);
     pc = pcap.pcap_close
     pc(handle)
-
+ 
 def pcap_dump_close(handle):
     #void pcap_close(pcap_dumper_t *p);
     pdc = pcap.pcap_dump_close
     pdc(handle)
-
+ 
 def pcap_next(handle,header):
     #const u_char *pcap_next(pcap_t *p, struct pcap_pkthdr *h)
     pn = pcap.pcap_next
@@ -118,8 +118,8 @@ def pcap_next(handle,header):
     header.caplen = h.caplen
     header.ts = timeval(h.tv_sec,h.tv_usec)
     return bytearray(aux)
-
-
+ 
+ 
 def pcap_loop(handle,cnt,callback_fun,user):
     global user_callback
     user_callback = callback_fun
@@ -152,7 +152,7 @@ def pcap_breakloop(hanlde):
     #void pcap_breakloop(pcap_t *);
     pbl = pcap.pcap_breakloop
     pbl(hanlde)
-
+ 
 def pcap_inject(handle,buf,size):
     #int pcap_inject(pcap_t *p, const void *buf, size_t size);
     pi = pcap.pcap_inject
